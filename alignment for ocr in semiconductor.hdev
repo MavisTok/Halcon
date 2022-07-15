@@ -1,3 +1,4 @@
+* 使用基于形状的匹配对准图像进行文字识别
 * This example shows how to use shape-based matching
 * in order to find a model region and use it for
 * further tasks.
