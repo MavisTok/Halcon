@@ -1,0 +1,81 @@
+* This example shows how to use shape-based matching
+* in order to find a model region and use it for
+* further tasks.
+* Here, the additional task consists of reading text
+* within a certain region, wherefore the image has
+* to be aliged using the matching transformation.
+* 
+* Initialization.
+dev_update_window ('off')
+dev_close_window ()
+* Initialize visualization.
+read_image (ReferenceImage, 'board/board_01')
+get_image_size (ReferenceImage, Width, Height)
+initialize_visualization (Width / 2, Height / 2, WindowHandle, WindowHandleText)
+disp_continue_message (WindowHandle, 'black', 'true')
+disp_description_text (WindowHandleText)
+* 
+* Define ROIs:
+* ROI for the shape model.
+dev_set_window (WindowHandle)
+dev_display (ReferenceImage)
+gen_rectangle1 (ROIModel, 60, 535, 185, 900)
+dev_display (ROIModel)
+* ROI for the text.
+gen_rectangle1 (ROIText, 445, 585, 590, 765)
+dev_display (ROIText)
+disp_model_message (WindowHandle)
+stop ()
+* 
+* Prepare the shape-based matching model.
+reduce_domain (ReferenceImage, ROIModel, ModelImage)
+* Create shape model and set parameters (offline step).
+create_generic_shape_model (ModelHandle)
+* Train the shape model.
+train_generic_shape_model (ModelImage, ModelHandle)
+* 
+* Prepare the text model.
+create_text_model_reader ('auto', 'Industrial_0-9A-Z_Rej.omc', TextModel)
+* 
+* We look for the reference transformation which we will need
+* for the alignment. We can extract it by finding the instance
+* on the reference image.
+* Set find parameters.
+set_generic_shape_model_param (ModelHandle, 'num_matches', 1)
+set_generic_shape_model_param (ModelHandle, 'min_score', 0.5)
+find_generic_shape_model (ReferenceImage, ModelHandle, MatchResultID, Matches)
+get_generic_shape_model_result (MatchResultID, 'all', 'hom_mat_2d', HomMat2DModel)
+* 
+* Find the object in other images (online step).
+for i := 1 to 9 by 1
+    read_image (SearchImage, 'board/board_' + i$'02')
+    find_generic_shape_model (SearchImage, ModelHandle, MatchResultID, Matches)
+    get_generic_shape_model_result (MatchResultID, 'all', 'hom_mat_2d', HomMat2DMatch)
+    * Compute the transformation matrix.
+    hom_mat2d_invert (HomMat2DMatch, HomMat2DMatchInvert)
+    hom_mat2d_compose (HomMat2DModel, HomMat2DMatchInvert, TransformationMatrix)
+    affine_trans_image (SearchImage, ImageAffineTrans, TransformationMatrix, 'constant', 'false')
+    * 
+    * Visualization.
+    dev_set_window (WindowHandle)
+    dev_display (SearchImage)
+    get_generic_shape_model_result_object (InstanceObject, MatchResultID, 'all', 'contours')
+    dev_display (InstanceObject)
+    * 
+    * Reading text and numbers on the aligned image.
+    reduce_domain (ImageAffineTrans, ROIText, ImageOCR)
+    find_text (ImageOCR, TextModel, TextResultID)
+    get_text_object (Characters, TextResultID, 'all_lines')
+    get_text_result (TextResultID, 'class', RecognizedText)
+    * 
+    * Visualization.
+    dev_set_window (WindowHandleText)
+    dev_display (ImageAffineTrans)
+    dev_set_colored (12)
+    dev_display (Characters)
+    disp_finding_text (Characters, WindowHandle, WindowHandleText, RecognizedText)
+    wait_seconds (0.5)
+endfor
+disp_end_of_program_message (WindowHandle, 'black', 'true')
+stop ()
+dev_close_window ()
